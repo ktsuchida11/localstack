@@ -1,0 +1,27 @@
+version: "3.8"
+
+services:
+  localstack:
+    build: ./src/localstack
+    ports:
+      - "127.0.0.1:4566:4566"            # LocalStack Gateway
+      - "127.0.0.1:4510-4559:4510-4559"  # external services port range
+    environment:
+      - "DEBUG=${DEBUG-}"
+      - "PERSISTENCE=${PERSISTENCE-}"
+      - "DOCKER_HOST=unix:///var/run/docker.sock"
+      - LAMBDA_RUNTIME_IMAGE_MAPPING={"python3.9":"localstack/lambda:python3.9"} # runtaimeは適宜書き換える
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "./function.zip:/tmp/function.zip" 
+  stream:
+    depends_on: ["localstack"]
+    build: ./src/stream/
+    environment:
+      - "LAMBDA_FUNCTION=local-function"
+      - "DYNAMODB_TABLE=local-table"
+      - "DYNAMODB_ENDPOINT=http://host.docker.internal:4566"
+    volumes:
+      - "./src/stream/app.py:/src/app.py"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
